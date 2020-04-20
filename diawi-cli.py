@@ -11,6 +11,7 @@ import random
 import re
 
 from bs4 import BeautifulSoup
+from envs import env
 
 TOKEN_URL = "https://www.diawi.com/"
 UPLOAD_URL = 'https://upload.diawi.com/plupload.php'
@@ -63,8 +64,8 @@ def get_token():
         soup = BeautifulSoup(r.text, 'html.parser')
         #token = soup.find("input", type="hidden")["value"]
         atext = soup.find("script", id="home-js").get_text()
-        aline = [line for line in atext.split('\n') if "DIAWI_UPLOAD_TOKEN" in line]
-        token = re.findall(r"'(.*?)'", aline[0])
+        #aline = [line for line in atext.split('\n') if "DIAWI_UPLOAD_TOKEN" in line]
+        token = env('DIAWI_UPLOAD_TOKEN') #re.findall(r"'(.*?)'", aline[0])
 
         if token is None:
             log("Could not get token!")
