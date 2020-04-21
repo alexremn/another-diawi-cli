@@ -11,7 +11,8 @@ import random
 import re
 
 from bs4 import BeautifulSoup
-from envs import env
+
+from sparkpost import SparkPost
 
 TOKEN_URL = "https://www.diawi.com/"
 UPLOAD_URL = 'https://upload.diawi.com/plupload.php'
@@ -57,21 +58,17 @@ def create_tmp_file_name(args):
     return tmp_file_name
 
 
-def get_token():
+def get_token(args):
     r = requests.get(TOKEN_URL)
 
     if r.status_code == 200:
-        soup = BeautifulSoup(r.text, 'html.parser')
-        #token = soup.find("input", type="hidden")["value"]
-        atext = soup.find("script", id="home-js").get_text()
-        #aline = [line for line in atext.split('\n') if "DIAWI_UPLOAD_TOKEN" in line]
-        token = env('DIAWI_UPLOAD_TOKEN') #re.findall(r"'(.*?)'", aline[0])
+        token = os.path.basename(args.token)
 
         if token is None:
             log("Could not get token!")
             sys.exit(1)
         else:
-            log("found token : {}".format(token))
+            #log("found token : {}".format(token))
             return token
     else:
         log("{} not available!".format(TOKEN_URL))
@@ -85,7 +82,6 @@ def file_upload(args, tmp_file_name, token):
     log("Uploading File...")
     r = requests.post(UPLOAD_URL, params=upload_params, files=files, data=upload_data)
 
-
     debug("file upload responce code : {}".format(r.status_code))
     debug("file upload responce text : {}".format(r.text))
 
@@ -97,17 +93,15 @@ def file_upload(args, tmp_file_name, token):
 
 
 def file_post(args, tmp_file_name, token):
-    file_name = os.path.basename(args.file)
-
     post_data = {
         'token': token,
         'uploader_0_tmpname': tmp_file_name,
-        'uploader_0_name': file_name,
+        'uploader_0_name': os.path.basename(args.file),
         'uploader_0_status': 'done',
         'uploader_count': '1',
         'comment': '',
         'email': '',
-        'password': '',
+        'password': os.path.basename(args.password),
         'notifs': 'off',
         'udid': 'off',
         'wall': 'off'
@@ -116,8 +110,8 @@ def file_post(args, tmp_file_name, token):
     log("Posting File...")
     r = requests.post(POST_URL, data=post_data)
 
-    debug("file post responce code : {}".format(r.status_code))
-    debug("file post responce text : {}".format(r.text))
+    debug("file post response code : {}".format(r.status_code))
+    debug("file post response text : {}".format(r.text))
 
     if r.status_code != 200:
         log("Failed to post file!")
@@ -150,6 +144,21 @@ def get_job_status(token_id, job_id):
             log("Server encounted an error")
             sys.exit(1)
 
+def email_send(args, token_id, job_id):
+    log("Sending emails...")
+    status_params = {'token': token_id, 'job': job_id}
+    r = requests.get(STATUS_URL, params=status_params)
+    json_result = json.loads(r.text)
+#    json_output = json.load(open(os.path.basename(args.json)).read())
+    sp = SparkPost()
+    sp.transmissions.send(
+        recipients=[os.path.basename(args.emailto)],
+        html='<p> New version of <b>'+os.path.basename(args.appname)+"</b> is available here: "+format(json_result["link"])+"</p><br>Comment: "+os.path.basename(args.comment), #+"<br>output.json: <br>"+format(json.dumps(json_output, indent = 4, sort_keys=True)),
+        from_email=os.path.basename(args.emailfrom),
+        subject='New version of '+os.path.basename(args.appname), 
+    )
+
+    log('Sent emails to: '+os.path.basename(args.emailto))
 
 def main(args):
     global set_debug
@@ -159,23 +168,28 @@ def main(args):
 
     validate_file(args)
     tmp_file_name = create_tmp_file_name(args)
-    token = get_token()
+    token = get_token(args)
     file_upload(args, tmp_file_name, token)
     job_id = file_post(args, tmp_file_name, token)
     get_job_status(token, job_id)
+    email_send(args, token, job_id)
 
     log("Finished!")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("file",             help="Path to your deploy file (.ipa .zip .apk)")
+    parser.add_argument("-f", "--file",     help="Path to your deploy file (.ipa .zip .apk)")
+    parser.add_argument("-t", "--token",  help="Diawi token")
     parser.add_argument("-c", "--comment",  help="Comment to display to the installer")
-    parser.add_argument("-e", "--email",    help="Email to receive the deployed app link")
+    parser.add_argument("-ef", "--emailfrom",    help="Sent from email")
+    parser.add_argument("-et", "--emailto",    help="Sent to email(s)")
+    parser.add_argument("-an", "--appname", help="App name to mention in email")
     parser.add_argument("-p", "--password", help="Password for the deployed app")
-    parser.add_argument("-n", "--notif",    help="Notify when user installs application", action="store_true")
-    parser.add_argument("-u", "--udid",     help="Allow testers to find by UDID on Daiwi", action="store_true")
-    parser.add_argument("-w", "--wall",     help="List icon on Diawi 'Wall of Apps'", action="store_true")
+#    parser.add_argument("-js", "--json", help="Output json")
+#    parser.add_argument("-n", "--notif",    help="Notify when user installs application", action="store_true")
+#    parser.add_argument("-u", "--udid",     help="Allow testers to find by UDID on Daiwi", action="store_true")
+#    parser.add_argument("-w", "--wall",     help="List icon on Diawi 'Wall of Apps'", action="store_true")
     parser.add_argument("-d", "--debug",    help="Set to enable debug", action="store_true")
     args = parser.parse_args()
 
