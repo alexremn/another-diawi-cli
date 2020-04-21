@@ -99,7 +99,7 @@ def file_post(args, tmp_file_name, token):
         'uploader_0_name': os.path.basename(args.file),
         'uploader_0_status': 'done',
         'uploader_count': '1',
-        'comment': os.path.basename(args.comment),
+        'comment': '',
         'email': '',
         'password': os.path.basename(args.password),
         'notifs': 'off',
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--file",     help="Path to your deploy file (.ipa .zip .apk)")
     parser.add_argument("-t", "--token",  help="Diawi token")
-    parser.add_argument("-c", "--comment",  help="Comment to display to the installer")
+#    parser.add_argument("-c", "--comment",  help="Comment to display to the installer")
     parser.add_argument("-ef", "--emailfrom",    help="Sent from email")
     parser.add_argument("-et", "--emailto",    help="Sent to email(s)")
     parser.add_argument("-an", "--appname", help="App name to mention in email")
