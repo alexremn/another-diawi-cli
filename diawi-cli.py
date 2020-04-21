@@ -99,7 +99,7 @@ def file_post(args, tmp_file_name, token):
         'uploader_0_name': os.path.basename(args.file),
         'uploader_0_status': 'done',
         'uploader_count': '1',
-        'comment': '',
+        'comment': os.path.basename(args.comment),
         'email': '',
         'password': os.path.basename(args.password),
         'notifs': 'off',
@@ -149,11 +149,10 @@ def email_send(args, token_id, job_id):
     status_params = {'token': token_id, 'job': job_id}
     r = requests.get(STATUS_URL, params=status_params)
     json_result = json.loads(r.text)
-#    json_output = json.load(open(os.path.basename(args.json)).read())
     sp = SparkPost()
     sp.transmissions.send(
         recipients=[os.path.basename(args.emailto)],
-        html='<p> New version of <b>'+os.path.basename(args.appname)+"</b> is available here: "+format(json_result["link"])+"</p><br>Comment: "+os.path.basename(args.comment), #+"<br>output.json: <br>"+format(json.dumps(json_output, indent = 4, sort_keys=True)),
+        html='<p> New version of <b>'+os.path.basename(args.appname)+"</b> is available here: "+format(json_result["link"])+"</p>",
         from_email=os.path.basename(args.emailfrom),
         subject='New version of '+os.path.basename(args.appname), 
     )
